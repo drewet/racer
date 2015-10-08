@@ -1,17 +1,17 @@
-use racer::ast::with_error_checking_parse;
-use racer::{Match, MatchType};
-use racer::typeinf::get_function_declaration;
+use ast::with_error_checking_parse;
+use core::{Match, MatchType, SessionRef};
+use typeinf::get_function_declaration;
 
 use syntex_syntax::ast::ImplItem_;
 
-pub fn snippet_for_match(m: &Match) -> String {
+pub fn snippet_for_match(m: &Match, session: SessionRef) -> String {
     match m.mtype {
         MatchType::Function => {
-            let method = get_function_declaration(&m);
+            let method = get_function_declaration(&m, session);
             if let Some(m) = MethodInfo::from_source_str(&method) {
                 m.snippet()
             } else {
-                "".to_string()
+                "".into()
             }
         }
         _ => m.matchstr.clone()
@@ -19,8 +19,8 @@ pub fn snippet_for_match(m: &Match) -> String {
 }
 
 struct MethodInfo {
-    name : String,
-    args : Vec<String>
+    name: String,
+    args: Vec<String>
 }
 
 impl MethodInfo {
@@ -39,25 +39,25 @@ impl MethodInfo {
                             let ref decl = msig.decl;
                             Some(MethodInfo {
                                 // ident.as_str calls Ident.name.as_str
-                                name: method.ident.as_str().to_string(),
+                                name: method.ident.name.as_str().to_string(),
                                 args: decl.inputs.iter().map(|arg| {
                                     let ref codemap = p.sess.span_diagnostic.cm;
                                     match codemap.span_to_snippet(arg.pat.span) {
                                         Ok(name) => name,
-                                        _ => "".to_string()
+                                        _ => "".into()
                                     }
                                 }).collect(),
                             })
                         },
                         _ => {
                             debug!("Unable to parse method declaration. |{}|", source);
-                            return None;
+                            None
                         }
                     }
                 },
                 Err(FatalError) => {
                     debug!("Unable to parse method declaration. |{}|",source);
-                    return None;
+                    None
                 }
             }
         })
